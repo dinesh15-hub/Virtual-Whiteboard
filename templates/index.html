@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Virtual Whiteboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      margin-top: 20px;
+      color: #333;
+      animation: fadeIn 1s ease-in-out;
+    }
+
+    #toolbar {
+      margin: 20px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button, input[type="color"] {
+      padding: 10px 15px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #ddd;
+    }
+
+    canvas {
+      border: 2px solid #555;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 900px) {
+      canvas {
+        width: 95vw;
+        height: 60vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Virtual Whiteboard</h1>
+
+  <div id="toolbar">
+    <input type="color" id="colorPicker" value="#000000">
+    <button onclick="undo()">Undo</button>
+    <button onclick="redo()">Redo</button>
+    <button onclick="clearCanvas()">Clear</button>
+  </div>
+
+  <canvas id="board" width="800" height="500"></canvas>
+
+  <script>
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+    let painting = false;
+    let paths = [];
+    let redoStack = [];
+    let currentPath = [];
+    let color = document.getElementById('colorPicker').value;
+
+    document.getElementById('colorPicker').addEventListener('change', (e) => {
+      color = e.target.value;
+    });
+
+    canvas.addEventListener('mousedown', () => {
+      painting = true;
+      currentPath = [];
+      ctx.beginPath();
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      painting = false;
+      ctx.beginPath();
+      if (currentPath.length > 0) {
+        paths.push({ color, points: currentPath });
+        redoStack = [];
+      }
+    });
+
+    canvas.addEventListener('mousemove', draw);
+
+    function draw(e) {
+      if (!painting) return;
+      const x = e.offsetX;
+      const y = e.offsetY;
+
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = color;
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      currentPath.push({ x, y });
+    }
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      paths = [];
+      redoStack = [];
+    }
+
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let path of paths) {
+        ctx.strokeStyle = path.color;
+        ctx.beginPath();
+        for (let i = 0; i < path.points.length; i++) {
+          let p = path.points[i];
+          if (i === 0) {
+            ctx.moveTo(p.x, p.y);
+          } else {
+            ctx.lineTo(p.x, p.y);
+          }
+        }
+        ctx.stroke();
+        ctx.beginPath();
+      }
+    }
+
+    function undo() {
+      if (paths.length === 0) return;
+      redoStack.push(paths.pop());
+      redraw();
+    }
+
+    function redo() {
+      if (redoStack.length === 0) return;
+      paths.push(redoStack.pop());
+      redraw();
+    }
+  </script>
+
+</body>
+</html>
